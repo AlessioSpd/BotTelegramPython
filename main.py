@@ -9,30 +9,38 @@ import re
 import bs4, requests, webbrowser
 
 # Main Code
+stato = 'IDLE'
 url = "https://www.google.it/search?q=pathToReplace&source=lnms&tbm=isch&sa=X&ved=2ahUKEwjJ8rfZsKj3AhW-k_0HHUtBCwAQ_AUoAXoECAIQAw&biw=639&bih=600&dpr=1.5"
 print("Bot started...")
 
 # Ogni funzione svolge il compito di rispondere ad un certo tipo di messaggio
-# <comando>.command risponde ai messaggi "comando" es. /start
 def start_command(update, contex):
-	buttons = [[KeyboardButton("ciao")], [KeyboardButton("salve")]]
-	contex.bot.send_message(chat_id=update.effective_chat.id, text="welcome",
-	reply_markup=ReplyKeyboardMarkup(buttons))
+	start_text = "Benvenuto, sono un bot in sviluppo, usa il comando /help per sapere cosa posso fare. BuonBot!!"
+	# buttons = [[KeyboardButton("ciao")], [KeyboardButton("salve")]]
+	contex.bot.send_message(chat_id=update.effective_chat.id, text=start_text)#,
+	# reply_markup=ReplyKeyboardMarkup(buttons))
 	# update.message.reply_text("Type something to get started)
 
 def help_command(update, contex):
-	update.message.reply_text("If u need help!, you should ask for it on google!")
+	update.message.reply_text("Digitando /search, svolgerò una ricerca di immagini riferite alla parola/frase che mi darai")
 
-def ciao_command(update, contex):
-	update.message.reply_text("hai scritto ciao")
+def search_command(update, contex):
+	global stato
+	if stato == 'IDLE':
+		contex.bot.send_message(chat_id=update.effective_chat.id, text="Dammi una parola chiave per la ricerca")
+		stato = 'WAITING_SEARCHING_KEY'
+		return
 
-def bestemmia_command(update, contex):
-	update.message.reply_text("non si bestemmia porcoddio fra")
-
-# questa funzione rimanda al file Responses che gestisce i messaggi normali (non comandi)
-def handle_message(update, contex):
-	response = ""
 	user_message = str(update.message.text).lower()
+
+	# pattern = re.compile(r"^/search (.+)$")
+	# if re.search(pattern, user_message) is None:
+	# 	update.message.reply_text("Termini di ricerca errati, usare il comando non basta, abbina una parola con cui fare la ricerca!")
+	# 	return
+	# else:
+	# semi_path = re.search(pattern, user_message).group(1)
+
+	#creo l url per la ricerca
 	semi_path = user_message.replace(" ", "+")
 	complete_path = url.replace("pathToReplace", semi_path)
 	
@@ -41,12 +49,29 @@ def handle_message(update, contex):
 	html_page = bs4.BeautifulSoup(res.text, 'html.parser')
 	title = html_page.select('img')
 
+	# cerco i link
 	pattern = re.compile(r".*src=\"(.*);")
-
 	rand = random.randint(1,21)
 
-	contex.bot.send_photo(chat_id=update.effective_chat.id, photo=(re.search(pattern, str(title[rand])).group(1)))	
+	# invio l immagine
+	contex.bot.send_photo(chat_id=update.effective_chat.id, photo=(re.search(pattern, str(title[rand])).group(1)))		
+	# contex.bot.sendDocument(chat_id=update.effective_chat.id, document=(re.search(pattern, str(title[rand])).group(1)))
+	stato = 'IDLE'
 
+def info_command(update, contex):
+	user = update.message.from_user
+	print(f'You talk with user {user["username"]} and his user ID: {user["id"]}')
+	# print('You talk with user {} and his user ID: {} '.format(user['username'], user['id']))
+
+# questa funzione rimanda al file Responses che gestisce i messaggi normali (non comandi)
+def handle_message(update, contex):
+	global stato
+
+	if stato == 'WAITING_SEARCHING_KEY':
+		search_command(update, contex)
+		return
+	
+	update.message.reply_text("Usa i comandi per usare il bot al meglio!\n/start\n/search")
 
 
 	# if user_message in ("hello", "hi", "sup"):
@@ -77,8 +102,8 @@ def main():
 	# handler dei comandi --------------------------------
 	dp.add_handler(CommandHandler("start", start_command))
 	dp.add_handler(CommandHandler("help", help_command))
-	dp.add_handler(CommandHandler("ciao", ciao_command))
-	dp.add_handler(CommandHandler("bestemmia", bestemmia_command))
+	dp.add_handler(CommandHandler("search", search_command))
+	dp.add_handler(CommandHandler("info", info_command))
 	# ----------------------------------------------------
 	
 	# handler messaggi normali ---------------------------------
