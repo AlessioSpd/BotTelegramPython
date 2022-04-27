@@ -7,9 +7,11 @@ from pprint import pprint
 import random
 import re
 import bs4, requests, webbrowser
+import os
 
 # Main Code
 stato = 'IDLE'
+fileName = ""
 url = "https://www.google.it/search?q=pathToReplace&source=lnms&tbm=isch&sa=X&ved=2ahUKEwjJ8rfZsKj3AhW-k_0HHUtBCwAQ_AUoAXoECAIQAw&biw=639&bih=600&dpr=1.5"
 print("Bot started...")
 
@@ -25,6 +27,96 @@ def start_command(update, contex):
 def help_command(update, contex):
 	contex.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
 	update.message.reply_text("Digitando /search, svolgerò una ricerca di immagini riferite alla parola/frase che mi darai")
+
+def create_list_command(update, contex):
+	global stato
+	if stato == 'IDLE':
+		contex.bot.send_message(chat_id=update.effective_chat.id, text="Dammi il nome della lista:")
+		stato = 'WAITING_NEW_LIST_NAME'
+	elif stato == 'WAITING_NEW_LIST_NAME':
+		new_name = str(update.message.text).lower()
+		new_name = new_name.replace(" ","")
+		os.system(f"./createList.pl {new_name}")
+		contex.bot.send_message(chat_id=update.effective_chat.id, text="Lista creata con successo!")
+		stato = 'IDLE'
+
+def print_all_list_command(update, contex):
+	list_of_file = os.popen('ls files').read()
+	list_of_file = list_of_file.split('\n')
+	list_of_file.pop()
+	
+	if len(list_of_file) == 0:
+		contex.bot.send_message(chat_id=update.effective_chat.id, text="Non esiste alcuna lista! Usa il comando /create_new_list per crearne una nuova!")
+		return;
+	else:
+		list_of_nameList = "Le tue liste:"
+		for name in list_of_file:
+			list_of_nameList = list_of_nameList + f"\n- {name}"
+		contex.bot.send_message(chat_id=update.effective_chat.id, text=list_of_nameList)
+		contex.bot.send_message(chat_id=update.effective_chat.id, text="usa il comandi:\n/add_to_list\n/remove_from_list\n/delete_list\n/print_list\nper modificare o visualizzare una lista a tua scelta!")
+
+def print_list_command(update, contex):
+	global stato
+
+	if stato == 'WAITING_LIST_NAME_TO_PRINT':
+		path = f"./files/{str(update.message.text)}"
+		value_from_file = str(os.popen(f'./readFile.pl {path}').read())
+		values_from_file = value_from_file.split('\n')
+		values_from_file.pop()
+		toSend = "Gli elementi all'interno della lista:"
+		for value in values_from_file:
+			toSend = toSend + f"\n- {value}"
+		contex.bot.send_message(chat_id=update.effective_chat.id, text=toSend)
+		stato = 'IDLE'
+	else:
+		list_of_file = os.popen('ls files').read()
+		list_of_file = list_of_file.split('\n')
+		list_of_file.pop()
+
+		if len(list_of_file) == 0:
+			contex.bot.send_message(chat_id=update.effective_chat.id, text="Non esiste alcuna lista! Usa il comando /create_new_list per crearne una nuova!")
+			return;
+		else:
+			buttons = []
+			for name in list_of_file:
+				buttons.append([KeyboardButton(str(name))])
+				contex.bot.send_message(chat_id=update.effective_chat.id, text="scegli la lista da visualizzare",
+				reply_markup=ReplyKeyboardMarkup(buttons))
+				stato = 'WAITING_LIST_NAME_TO_PRINT'
+
+def add_to_list_command(update, contex):
+	global stato
+	global fileName
+
+	if stato == 'WAITING_LIST_NAME_TO_ADD':
+		print("add")
+		fileName = f"./files/{str(update.message.text)}"
+		contex.bot.send_message(chat_id=update.effective_chat.id, text="Scrvi l elemento che vuoi aggiungere alla lista\nNB: ogni messaggio che scriverai sarà contanto come elemento che vuoi aggiungere,\nse vuoi smettere di aggiungere elementi digita /stop_add_item !")
+		stato = 'WAITING_ITEM_TO_ADD_IN_LIST'
+	elif stato == 'WAITING_ITEM_TO_ADD_IN_LIST':
+		os.popen(f"./printOnFile.pl {fileName} '{str(update.message.text)}'").read()
+		contex.bot.send_message(chat_id=update.effective_chat.id, text="elemento aggiunto!")
+	else:
+		list_of_file = os.popen('ls files').read()
+		list_of_file = list_of_file.split('\n')
+		list_of_file.pop()
+
+		if len(list_of_file) == 0:
+			contex.bot.send_message(chat_id=update.effective_chat.id, text="Non esiste alcuna lista! Usa il comando /create_new_list per crearne una nuova!")
+		else:
+			buttons = []
+			for name in list_of_file:
+				buttons.append([KeyboardButton(str(name))])
+				contex.bot.send_message(chat_id=update.effective_chat.id, text="scegli la lista alla quale aggiungere un elemento",
+				reply_markup=ReplyKeyboardMarkup(buttons))
+				stato = 'WAITING_LIST_NAME_TO_ADD'
+
+def stop_add_item_command(update, contex):
+	global stato
+	if stato == 'WAITING_ITEM_TO_ADD_IN_LIST':
+		stato = 'IDLE';
+		update.message.reply_text("Lista perfettamente aggiornata!\nDigita /print_list per vedere la tua lista!")
+
 
 def search_command(update, contex):
 	global stato
@@ -93,7 +185,15 @@ def handle_message(update, contex):
 	if stato == 'WAITING_SEARCHING_KEY':
 		search_command(update, contex)
 		return
-	
+	elif stato == 'WAITING_NEW_LIST_NAME':
+		create_list_command(update, contex)
+		return
+	elif stato == 'WAITING_LIST_NAME_TO_PRINT':
+		print_list_command(update, contex)
+		return
+	elif stato == 'WAITING_LIST_NAME_TO_ADD' or stato == 'WAITING_ITEM_TO_ADD_IN_LIST':
+		add_to_list_command(update, contex)
+		return
 	update.message.reply_text("Usa i comandi per usare il bot al meglio!\n/start\n/search")
 
 	# if user_message in ("hello", "hi", "sup"):
@@ -127,6 +227,11 @@ def main():
 	dp.add_handler(CommandHandler("search", search_command))
 	dp.add_handler(CommandHandler("info", info_command))
 	dp.add_handler(CommandHandler("random_hentai", random_hentai_command))
+	dp.add_handler(CommandHandler("create_new_list", create_list_command))
+	dp.add_handler(CommandHandler("print_all_list", print_all_list_command))
+	dp.add_handler(CommandHandler("print_list", print_list_command))
+	dp.add_handler(CommandHandler("add_to_list", add_to_list_command))
+	dp.add_handler(CommandHandler("stop_add_item", stop_add_item_command))
 	# ----------------------------------------------------
 	
 	# handler messaggi normali ---------------------------------
