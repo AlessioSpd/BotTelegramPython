@@ -1,4 +1,4 @@
-#Token github: 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
+
 API_KEY 		= '5349395950:AAEOBlbGD98bIyxepRZ807dHBiXJysl_9tE'
 CREATE_LIST 	= 'create_list'
 WRITE_FILE 		= 'write_file'

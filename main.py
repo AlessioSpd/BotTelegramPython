@@ -218,24 +218,6 @@ def info_command(update, contex):
 	print(f'You talk with user {user["username"]} and his user ID: {user["id"]}')
 	# print('You talk with user {} and his user ID: {} '.format(user['username'], user['id']))
 
-def random_hentai_command(update, contex):
-	url = "https://hanime.tv/browse/random?r="
-	res = requests.get(url)
-
-	html = bs4.BeautifulSoup(res.text, 'html.parser')
-	a_element = html.find_all("a", {"class":"hvc2 pb-3 flex row wrap justify-left align-left noselect card"})
-	pattern = re.compile(r'.*href="/videos/hentai/(.+)" ')
-	names = []
-	count = 0
-
-	for stringa in a_element:
-		names.append(re.search(pattern, str(stringa)).group(1))
-	
-	rand = random.randint(0,23)
-	pre_link_path = "https://hanime.tv/videos/hentai/"
-	contex.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
-	contex.bot.send_message(chat_id=update.effective_chat.id, text=pre_link_path+names[rand])
-
 # questa funzione rimanda al file Responses che gestisce i messaggi normali (non comandi)
 def handle_message(update, contex):
 	global stato
@@ -260,6 +242,7 @@ def handle_message(update, contex):
 		return
 	update.message.reply_text("Usa i comandi per usare il bot al meglio!\n/start\n/search")
 
+	# handle_message base per messaggi statici
 	# if user_message in ("hello", "hi", "sup"):
 	# 	response = "hey! How is it going?"
 
@@ -290,7 +273,6 @@ def main():
 	dp.add_handler(CommandHandler("help", help_command))
 	dp.add_handler(CommandHandler("search", search_command))
 	dp.add_handler(CommandHandler("info", info_command))
-	dp.add_handler(CommandHandler("random_hentai", random_hentai_command))
 	dp.add_handler(CommandHandler("create_new_list", create_list_command))
 	dp.add_handler(CommandHandler("print_all_list", print_all_list_command))
 	dp.add_handler(CommandHandler("print_list", print_list_command))
